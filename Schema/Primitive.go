@@ -2,21 +2,48 @@ package Schema
 
 import "encoding/json"
 
-type PropertyPrimitive struct {
-	Description string      `json:"description,omitempty"`
-	Type        elementType `json:"type,omitempty"`
-	Enum        []string    `json:"enum,omitempty"`
+type PrimitiveType string
+
+const (
+	Null    PrimitiveType = "null"
+	Boolean PrimitiveType = "bool"
+	Object  PrimitiveType = "object"
+	Arr     PrimitiveType = "array"
+	Number  PrimitiveType = "i32"
+	Str     PrimitiveType = "string"
+)
+
+type Primitive struct {
+	_internal _internal_primitive
 }
 
-func ReadPrimitive(data *json.RawMessage) (*PropertyPrimitive, bool) {
-	var property PropertyPrimitive
+func (r *Primitive) Type() PrimitiveType {
+	return r._internal.Type
+}
 
-	if json.Unmarshal(*data, &property) != nil {
+func (r *Primitive) Description() string {
+	return r._internal.Description
+}
+
+func (r *Primitive) Resolve(schema *Schema) *Primitive {
+	// do nothing
+	return r
+}
+
+type _internal_primitive struct {
+	Description string        `json:"description,omitempty"`
+	Type        PrimitiveType `json:"type,omitempty"`
+}
+
+func ReadPrimitive(data *json.RawMessage) (*Primitive, bool) {
+	var _internal _internal_primitive
+
+	if json.Unmarshal(*data, &_internal) != nil {
 		return nil, false
 	}
 
-	if property.Type == Str || property.Type == Number || property.Type == Boolean {
-		return &property, true
+	if _internal.Type == Str || _internal.Type == Number || _internal.Type == Boolean {
+		return &Primitive{_internal: _internal}, true
 	}
 
 	return nil, false

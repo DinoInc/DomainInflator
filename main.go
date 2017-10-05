@@ -72,9 +72,10 @@ func main() {
 			panic("not implemented")
 		}
 
-		engine.SetCurrentFile(currentFile)
-		engine.Resolve(ref)
-		engine.Print()
+		engine.SchemaIDL.SetCurrentFile(currentFile)
+		engine.SchemaIDL.Resolve(ref)
+
+		engine.ThriftIDL.Resolve(ref.Name(), engine.SchemaIDL)
 
 	}
 
