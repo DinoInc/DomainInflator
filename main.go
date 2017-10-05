@@ -74,10 +74,9 @@ func handleAllOfRef(thriftStructure Thrift.ThriftStructure, ref *Schema.Ref) {
 }
 
 func handleAllOfStructure(thriftStructure Thrift.ThriftStructure, meta *json.RawMessage) {
-	var structure Schema.SchemaStructure
 
-	err := json.Unmarshal(*meta, &structure)
-	if err != nil {
+	structure, isStruct := Schema.ReadStructure(meta)
+	if !isStruct {
 		panic("not implemented")
 	}
 
@@ -131,7 +130,7 @@ func handleAllOf(identifier string, definition Schema.SchemaDefinition) {
 
 var baseDir string
 var namespace string
-var currentFile = "Patient.schema.json"
+var currentFile string
 
 func resolve(ref *Schema.Ref) {
 
@@ -160,8 +159,12 @@ func resolve(ref *Schema.Ref) {
 	var _currentFile = currentFile
 	currentFile = structureFile
 
-	var s Schema.Schema
-	json.Unmarshal(content, &s)
+	jsonContent := json.RawMessage(content)
+	s, isSchema := Schema.ReadSchema(&jsonContent)
+	if !isSchema {
+		panic("not implemented")
+	}
+
 	definition := s.Definitions[structureName]
 
 	if definition.AllOf != nil {
@@ -235,12 +238,10 @@ func main() {
 			os.Exit(1)
 		}
 
-		var ref *Schema.Ref
-		if json.Unmarshal(content, &ref) != nil {
-			panic("not implemented")
-		}
+		jsonContent := json.RawMessage(content)
+		ref, isRef := Schema.ReadRef(&jsonContent)
 
-		if ref.Name() == "" {
+		if !isRef {
 			panic("not implemented")
 		}
 
