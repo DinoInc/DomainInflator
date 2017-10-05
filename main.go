@@ -3,133 +3,26 @@ package main
 import "encoding/json"
 import "io/ioutil"
 import "fmt"
-import "regexp"
 import "os"
 import "reflect"
-import "strings"
 import "bufio"
 import "flag"
+import "regexp"
+import "strings"
+
+import (
+	"github.com/DinoInc/DomainInflator/Schema"
+	"github.com/DinoInc/DomainInflator/Thrift"
+	"github.com/DinoInc/DomainInflator/Utils"
+)
 
 var _ = reflect.TypeOf
 
-type elementType string
+func handlePrimitiveEnum(thriftStructure Thrift.ThriftStructure, property string, propertyPrimitive *Schema.PropertyPrimitive) {
 
-const (
-	null    elementType = "null"
-	boolean elementType = "bool"
-	object  elementType = "object"
-	array   elementType = "array"
-	number  elementType = "i32"
-	str     elementType = "string"
-)
+	enumName := Utils.UpperConcat("Enum", Utils.RemoveUnderscore(thriftStructure.Identifier), property)
 
-type Ref struct {
-	Ref string `json:"$ref"`
-}
-
-type PropertyPrimitive struct {
-	Description string      `json:"description,omitempty"`
-	Type        elementType `json:"type,omitempty"`
-	Enum        []string    `json:"enum,omitempty"`
-}
-
-type PropertyArray struct {
-	Description string           `json:"description,omitempty"`
-	Type        elementType      `json:"type,omitempty"`
-	Items       *json.RawMessage `json:"items,omitempty"`
-}
-
-type SchemaStructure struct {
-	Description string                      `json:"description,omitempty"`
-	Properties  map[string]*json.RawMessage `json:"properties,omitempty"`
-}
-
-type ThriftStructure struct {
-	Identifier  string
-	Description string            `json:"description,omitempty"`
-	Properties  map[string]string `json:"properties,omitempty"`
-}
-
-type ThriftEnum struct {
-	Items []string
-}
-
-type SchemaDefinition struct {
-	AllOf []*json.RawMessage `json:"allOf,omitempty"`
-	AnyOf []*json.RawMessage `json:"anyOf,omitempty"`
-}
-
-type Schema struct {
-	Definitions map[string]SchemaDefinition `json:"definitions,omitempty"`
-}
-
-var reservedSet map[string]bool
-var resolvedList = []string{"BEGIN", "END", "__CLASS__", "__DIR__", "__FILE__", "__FUNCTION__", "__LINE__", "__METHOD__", "__NAMESPACE__", "abstract", "alias", "and", "args", "as", "assert", "begin", "break", "case", "catch", "class", "clone", "continue", "declare", "def", "default", "del", "delete", "do", "dynamic", "elif", "else", "elseif", "elsif", "end", "enddeclare", "endfor", "endforeach", "endif", "endswitch", "endwhile", "ensure", "except", "exec", "finally", "float", "for", "foreach", "from", "function", "global", "goto", "if", "implements", "import", "in", "inline", "instanceof", "interface", "is", "lambda", "module", "native", "new", "next", "nil", "not", "or", "package", "pass", "public", "print", "private", "protected", "raise", "redo", "rescue", "retry", "register", "return", "self", "sizeof", "static", "super", "switch", "synchronized", "then", "this", "throw", "transient", "try", "undef", "unless", "unsigned", "until", "use", "var", "virtual", "volatile", "when", "while", "with", "xor", "yield"}
-
-func IsReservedWord(word string) bool {
-
-	if reservedSet == nil {
-		reservedSet = make(map[string]bool)
-		for _, reservedWord := range resolvedList {
-			reservedSet[reservedWord] = true
-		}
-	}
-
-	_, isInReservedWord := reservedSet[word]
-	return isInReservedWord
-}
-
-func readPrimitive(data *json.RawMessage) (*PropertyPrimitive, bool) {
-	var property PropertyPrimitive
-
-	if json.Unmarshal(*data, &property) != nil {
-		return nil, false
-	}
-
-	if property.Type != str && property.Type != number && property.Type != boolean {
-		return nil, false
-	}
-
-	return &property, true
-}
-
-func readArray(data *json.RawMessage) (*PropertyArray, bool) {
-	var property PropertyArray
-
-	if json.Unmarshal(*data, &property) != nil {
-		return nil, false
-	}
-
-	if property.Type != array {
-		return nil, false
-	}
-
-	return &property, true
-}
-
-func readRef(data *json.RawMessage) (*Ref, bool) {
-	var ref Ref
-
-	if json.Unmarshal(*data, &ref) != nil {
-		return nil, false
-	}
-
-	if ref.Ref == "" {
-		return nil, false
-	}
-
-	return &ref, true
-}
-
-func getStructureName(refString string) string {
-	return regexp.MustCompile(`[a-zA-z]*$`).FindString(refString)
-}
-
-func handlePrimitiveEnum(thriftStructure ThriftStructure, property string, propertyPrimitive *PropertyPrimitive) {
-
-	enumName := upperConcat("Enum", removeUnderscore(thriftStructure.Identifier), property)
-
-	enum := ThriftEnum{}
+	enum := Thrift.ThriftEnum{}
 	for _, value := range propertyPrimitive.Enum {
 		enum.Items = append(enum.Items, value)
 	}
@@ -139,12 +32,12 @@ func handlePrimitiveEnum(thriftStructure ThriftStructure, property string, prope
 
 }
 
-func handleArray(thriftStructure ThriftStructure, property string, propertyArray *PropertyArray) {
+func handleArray(thriftStructure Thrift.ThriftStructure, property string, propertyArray *Schema.PropertyArray) {
 
-	if ref, isRef := readRef(propertyArray.Items); isRef {
-		thriftStructure.Properties[property] = "list<" + getStructureName(ref.Ref) + ">"
-		resolve(*ref)
-	} else if primitive, isPrimitive := readPrimitive(propertyArray.Items); isPrimitive {
+	if ref, isRef := Schema.ReadRef(propertyArray.Items); isRef {
+		thriftStructure.Properties[property] = "list<" + ref.Name() + ">"
+		resolve(ref)
+	} else if primitive, isPrimitive := Schema.ReadPrimitive(propertyArray.Items); isPrimitive {
 		thriftStructure.Properties[property] = "list<" + string(primitive.Type) + ">"
 	} else {
 		panic("not implemented")
@@ -152,7 +45,7 @@ func handleArray(thriftStructure ThriftStructure, property string, propertyArray
 
 }
 
-func handlePrimitive(thriftStructure ThriftStructure, property string, propertyPrimitive *PropertyPrimitive) {
+func handlePrimitive(thriftStructure Thrift.ThriftStructure, property string, propertyPrimitive *Schema.PropertyPrimitive) {
 
 	if propertyPrimitive.Enum != nil {
 
@@ -161,7 +54,7 @@ func handlePrimitive(thriftStructure ThriftStructure, property string, propertyP
 	} else {
 
 		switch propertyPrimitive.Type {
-		case number, boolean, str:
+		case Schema.Number, Schema.Boolean, Schema.Str:
 			thriftStructure.Properties[property] = string(propertyPrimitive.Type)
 		default:
 			panic("not implemented")
@@ -171,51 +64,57 @@ func handlePrimitive(thriftStructure ThriftStructure, property string, propertyP
 
 }
 
-func handleAllOf(identifier string, definition SchemaDefinition) {
+func handleAllOfRef(thriftStructure Thrift.ThriftStructure, ref *Schema.Ref) {
+	structureName := ref.Name()
+	resolve(ref)
+
+	for property, propertyType := range resolved[structureName].Properties {
+		thriftStructure.Properties[property] = propertyType
+	}
+}
+
+func handleAllOfStructure(thriftStructure Thrift.ThriftStructure, meta *json.RawMessage) {
+	var structure Schema.SchemaStructure
+
+	err := json.Unmarshal(*meta, &structure)
+	if err != nil {
+		panic("not implemented")
+	}
+
+	for property, propertyJSON := range structure.Properties {
+
+		//fmt.Println(property)
+
+		// skip _
+		if property[0] == '_' {
+			continue
+		}
+
+		if primitive, isPrimitive := Schema.ReadPrimitive(propertyJSON); isPrimitive {
+			handlePrimitive(thriftStructure, property, primitive)
+		} else if array, isArray := Schema.ReadArray(propertyJSON); isArray {
+			handleArray(thriftStructure, property, array)
+		} else if ref, isRef := Schema.ReadRef(propertyJSON); isRef {
+			thriftStructure.Properties[property] = ref.Name()
+			resolve(ref)
+		}
+
+	}
+}
+
+func handleAllOf(identifier string, definition Schema.SchemaDefinition) {
 	//fmt.Println("--------- " + identifier)
 
-	thriftStructure := ThriftStructure{}
+	thriftStructure := Thrift.ThriftStructure{}
 	thriftStructure.Identifier = identifier
 	thriftStructure.Properties = make(map[string]string)
 
 	for _, meta := range definition.AllOf {
 
-		if ref, isRef := readRef(meta); isRef {
-
-			structureName := getStructureName(ref.Ref)
-			resolve(*ref)
-
-			for property, propertyType := range resolved[structureName].Properties {
-				thriftStructure.Properties[property] = propertyType
-			}
-
+		if ref, isRef := Schema.ReadRef(meta); isRef {
+			handleAllOfRef(thriftStructure, ref)
 		} else {
-
-			var structure SchemaStructure
-			err := json.Unmarshal(*meta, &structure)
-			if err != nil {
-				panic("not implemented")
-			}
-
-			for property, propertyJSON := range structure.Properties {
-
-				//fmt.Println(property)
-
-				// skip _
-				if property[0] == '_' {
-					continue
-				}
-
-				if primitive, isPrimitive := readPrimitive(propertyJSON); isPrimitive {
-					handlePrimitive(thriftStructure, property, primitive)
-				} else if array, isArray := readArray(propertyJSON); isArray {
-					handleArray(thriftStructure, property, array)
-				} else if ref, isRef := readRef(propertyJSON); isRef {
-					thriftStructure.Properties[property] = getStructureName(ref.Ref)
-					resolve(*ref)
-				}
-
-			}
+			handleAllOfStructure(thriftStructure, meta)
 		}
 
 	}
@@ -234,20 +133,16 @@ var baseDir string
 var namespace string
 var currentFile = "Patient.schema.json"
 
-func getStructureFile(refString string) string {
-	return regexp.MustCompile(`^[a-zA-z.]*`).FindString(refString)
-}
+func resolve(ref *Schema.Ref) {
 
-func resolve(ref Ref) {
-
-	structureName := getStructureName(ref.Ref)
+	structureName := ref.Name()
 	if _, isExists := resolved[structureName]; isExists {
 		return
 	}
 
 	var structureFile = currentFile
-	if ref.Ref[0] != '#' {
-		structureFile = getStructureFile(ref.Ref)
+	if !ref.IsSelf() {
+		structureFile = ref.File()
 	}
 
 	content, e := ioutil.ReadFile(baseDir + structureFile)
@@ -265,7 +160,7 @@ func resolve(ref Ref) {
 	var _currentFile = currentFile
 	currentFile = structureFile
 
-	var s Schema
+	var s Schema.Schema
 	json.Unmarshal(content, &s)
 	definition := s.Definitions[structureName]
 
@@ -280,8 +175,8 @@ func resolve(ref Ref) {
 	resolvedOrder = append(resolvedOrder, structureName)
 }
 
-var enums map[string]*ThriftEnum
-var resolved map[string]*ThriftStructure
+var enums map[string]*Thrift.ThriftEnum
+var resolved map[string]*Thrift.ThriftStructure
 var resolvedOrder []string
 
 type DeviationContext int64
@@ -299,20 +194,6 @@ type ThriftDeviation struct {
 
 var deviations []*ThriftDeviation
 
-func upperConcat(s ...string) string {
-	result := strings.ToLower(s[0])
-	for i := 1; i < len(s); i++ {
-		result += strings.Title(s[i])
-	}
-	return result
-}
-
-func removeUnderscore(s string) string {
-	re := regexp.MustCompile(`_+`)
-	replaced := re.ReplaceAllString(s, "")
-	return replaced
-}
-
 func isValidIdentifier(s string) bool {
 	isMatch, _ := regexp.MatchString(`^[A-z_][A-z0-9._]*$`, s)
 	return isMatch
@@ -320,9 +201,9 @@ func isValidIdentifier(s string) bool {
 
 func main() {
 
-	enums = make(map[string]*ThriftEnum)
-	resolved = make(map[string]*ThriftStructure)
-	resolved = make(map[string]*ThriftStructure)
+	enums = make(map[string]*Thrift.ThriftEnum)
+	resolved = make(map[string]*Thrift.ThriftStructure)
+	resolved = make(map[string]*Thrift.ThriftStructure)
 	deviations = make([]*ThriftDeviation, 0)
 
 	pBaseDir := flag.String("schema-dir", "./schemas/", "JSON schema Directory")
@@ -354,12 +235,12 @@ func main() {
 			os.Exit(1)
 		}
 
-		var ref Ref
+		var ref *Schema.Ref
 		if json.Unmarshal(content, &ref) != nil {
 			panic("not implemented")
 		}
 
-		if ref.Ref == "" {
+		if ref.Name() == "" {
 			panic("not implemented")
 		}
 
@@ -406,8 +287,8 @@ func main() {
 		var i = 1
 		for propertyName, propertyType := range structMeta.Properties {
 
-			if IsReservedWord(propertyName) {
-				newPropertyName := upperConcat(structName, propertyName)
+			if Thrift.IsReservedWord(propertyName) {
+				newPropertyName := Utils.UpperConcat(structName, propertyName)
 
 				deviations = append(deviations, &ThriftDeviation{
 					Original:    propertyName,
