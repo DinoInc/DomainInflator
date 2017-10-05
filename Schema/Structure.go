@@ -2,13 +2,13 @@ package Schema
 
 import "encoding/json"
 
-type Structure struct {
+type SchemaStructure struct {
 	Description string                      `json:"description,omitempty"`
 	Properties  map[string]*json.RawMessage `json:"properties,omitempty"`
 }
 
-func ReadStructure(data *json.RawMessage) (*Structure, bool) {
-	var structure Structure
+func ReadSchemaStructure(data *json.RawMessage) (*SchemaStructure, bool) {
+	var structure SchemaStructure
 
 	if json.Unmarshal(*data, &structure) != nil {
 		return nil, false
