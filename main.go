@@ -7,6 +7,8 @@ import "regexp"
 import "os"
 import "reflect"
 import "strings"
+import "bufio"
+import "flag"
 
 var _ = reflect.TypeOf
 
@@ -228,13 +230,13 @@ func handleAllOf(identifier string, definition SchemaDefinition) {
 // [v] array -> primitive
 // [ ]
 
-var baseDir = "./schema/"
+var baseDir string
+var namespace string
+var currentFile = "Patient.schema.json"
 
 func getStructureFile(refString string) string {
 	return regexp.MustCompile(`^[a-zA-z.]*`).FindString(refString)
 }
-
-var currentFile = "Patient.schema.json"
 
 func resolve(ref Ref) {
 
@@ -282,8 +284,23 @@ var enums map[string]*ThriftEnum
 var resolved map[string]*ThriftStructure
 var resolvedOrder []string
 
+type DeviationContext int64
+
+const (
+	PropertyIdentifier DeviationContext = 0
+	EnumIdentifier     DeviationContext = 1
+)
+
+type ThriftDeviation struct {
+	Original    string
+	Replacement string
+	Context     DeviationContext
+}
+
+var deviations []*ThriftDeviation
+
 func upperConcat(s ...string) string {
-	result := s[0]
+	result := strings.ToLower(s[0])
 	for i := 1; i < len(s); i++ {
 		result += strings.Title(s[i])
 	}
@@ -296,52 +313,130 @@ func removeUnderscore(s string) string {
 	return replaced
 }
 
+func isValidIdentifier(s string) bool {
+	isMatch, _ := regexp.MatchString(`^[A-z_][A-z0-9._]*$`, s)
+	return isMatch
+}
+
 func main() {
-
-	content, e := ioutil.ReadFile(baseDir + currentFile)
-	if e != nil {
-		fmt.Printf("File error: %v\n", e)
-		os.Exit(1)
-	}
-
-	var ref Ref
-	if json.Unmarshal(content, &ref) != nil {
-		panic("not implemented")
-	}
 
 	enums = make(map[string]*ThriftEnum)
 	resolved = make(map[string]*ThriftStructure)
-	resolvedOrder = make([]string, 0)
+	resolved = make(map[string]*ThriftStructure)
+	deviations = make([]*ThriftDeviation, 0)
 
-	resolve(ref)
+	pBaseDir := flag.String("schema-dir", "./schemas/", "JSON schema Directory")
+	pSchemas := flag.String("schema", "", "schemas to resolve")
+	pNamespace := flag.String("namespace", "", "thrift namespace")
+	flag.Parse()
+
+	if *pSchemas == "" {
+		fmt.Fprintf(os.Stderr, "missing required --schema argument/flag\n")
+		os.Exit(1)
+	}
+
+	if *pNamespace == "" {
+		fmt.Fprintf(os.Stderr, "missing required --namespace argument/flag\n")
+		os.Exit(1)
+	}
+
+	schemaList := strings.Split(*pSchemas, ",")
+
+	for _, schema := range schemaList {
+
+		baseDir = *pBaseDir
+		currentFile = schema
+		namespace = *pNamespace
+
+		content, e := ioutil.ReadFile(baseDir + currentFile + ".schema.json")
+		if e != nil {
+			fmt.Printf("File error: %v\n", e)
+			os.Exit(1)
+		}
+
+		var ref Ref
+		if json.Unmarshal(content, &ref) != nil {
+			panic("not implemented")
+		}
+
+		if ref.Ref == "" {
+			panic("not implemented")
+		}
+
+		resolve(ref)
+
+	}
+
+	thriftFile, _ := os.Create(namespace + ".thrift")
+	defer thriftFile.Close()
+	thriftWriter := bufio.NewWriter(thriftFile)
+
+	fmt.Fprintf(thriftWriter, "namespace go %s\n", namespace)
+	fmt.Fprintf(thriftWriter, "namespace java %s\n\n", namespace)
 
 	for enumName, enum := range enums {
-		fmt.Println("enum " + enumName + " {")
+		fmt.Fprintf(thriftWriter, "enum %s {\n", enumName)
 		for _, enumValue := range enum.Items {
-			fmt.Println("\t" + enumValue)
+
+			if isValidIdentifier(enumValue) {
+				fmt.Fprintf(thriftWriter, "\t%s\n", enumValue)
+			} else {
+				newEnumIdentifier := strings.Replace(enumValue, "-", "_", -1)
+
+				fmt.Fprintf(thriftWriter, "\t%s\n", newEnumIdentifier)
+
+				deviations = append(deviations, &ThriftDeviation{
+					Original:    enumValue,
+					Replacement: newEnumIdentifier,
+					Context:     EnumIdentifier,
+				})
+
+			}
+
 		}
-		fmt.Println("}")
+		fmt.Fprintf(thriftWriter, "}\n")
 
 	}
 
 	for _, structName := range resolvedOrder {
 		structMeta := resolved[structName]
 
-		fmt.Println("struct " + structName + " {")
+		fmt.Fprintf(thriftWriter, "struct %s {\n", structName)
 
-		var useReservedWord = false
-
-		for propertyName, _ := range structMeta.Properties {
-			useReservedWord = useReservedWord || IsReservedWord(propertyName)
-		}
-
+		var i = 1
 		for propertyName, propertyType := range structMeta.Properties {
-			if useReservedWord {
-				fmt.Println("\toptional " + propertyType + " " + upperConcat(structName, propertyName))
-			} else {
-				fmt.Println("\toptional " + propertyType + " " + propertyName)
+
+			if IsReservedWord(propertyName) {
+				newPropertyName := upperConcat(structName, propertyName)
+
+				deviations = append(deviations, &ThriftDeviation{
+					Original:    propertyName,
+					Replacement: newPropertyName,
+					Context:     PropertyIdentifier,
+				})
+				propertyName = newPropertyName
 			}
+
+			fmt.Fprintf(thriftWriter, "\t%d: optional %s %s\n", i, propertyType, propertyName)
+			i = i + 1
 		}
-		fmt.Println("}")
+		fmt.Fprintf(thriftWriter, "}\n")
 	}
+
+	sedFile, _ := os.Create(namespace + ".sed")
+	sedWriter := bufio.NewWriter(sedFile)
+	defer sedFile.Close()
+
+	for _, deviation := range deviations {
+		switch deviation.Context {
+		case PropertyIdentifier:
+			fmt.Fprintf(sedWriter, "s/json:\"%s,omitempty\"/json:\"%s,omitempty\"/g\n", deviation.Replacement, deviation.Original)
+		case EnumIdentifier:
+			fmt.Fprintf(sedWriter, "s/\"%s\"/\"%s\"/g\n", deviation.Replacement, deviation.Original)
+		}
+	}
+
+	thriftWriter.Flush()
+	sedWriter.Flush()
+
 }
