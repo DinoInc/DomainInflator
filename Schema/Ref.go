@@ -3,7 +3,6 @@ package Schema
 import "io/ioutil"
 import "encoding/json"
 import "regexp"
-import "fmt"
 
 type Ref struct {
 	_resolved *Structure
@@ -43,7 +42,6 @@ func (r *Ref) Resolve(_schema *Schema) *Structure {
 	}
 
 	if !r.IsSelf() {
-		fmt.Println("----------------------------------")
 
 		data, err := ioutil.ReadFile(__baseDir + r.File())
 		if err != nil {

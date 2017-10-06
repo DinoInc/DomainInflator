@@ -14,7 +14,12 @@ type _internal_structure struct {
 
 func (r *Structure) Resolve(schema *Schema) *Structure {
 	r.Properties = make(map[string]interface{})
+
 	for propertyName, propertyMeta := range r._internal.Properties {
+
+		if propertyName[0] == '_' {
+			continue
+		}
 
 		var property interface{}
 		if enum, isEnum := ReadEnum(propertyMeta); isEnum {

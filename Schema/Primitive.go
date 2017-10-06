@@ -6,10 +6,10 @@ type PrimitiveType string
 
 const (
 	Null    PrimitiveType = "null"
-	Boolean PrimitiveType = "bool"
+	Boolean PrimitiveType = "boolean"
 	Object  PrimitiveType = "object"
 	Arr     PrimitiveType = "array"
-	Number  PrimitiveType = "i32"
+	Number  PrimitiveType = "number"
 	Str     PrimitiveType = "string"
 )
 

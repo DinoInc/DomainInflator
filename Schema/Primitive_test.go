@@ -36,7 +36,7 @@ func TestPrimitiveDescription(t *testing.T) {
 }
 
 func TestPrimitiveBoolean(t *testing.T) {
-	data := json.RawMessage(`{"description":"deskripsi", "type":"bool"}`)
+	data := json.RawMessage(`{"description":"deskripsi", "type":"boolean"}`)
 	primitive, _ := ReadPrimitive(&data)
 
 	primitive = primitive.Resolve(nil)
