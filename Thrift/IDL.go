@@ -2,7 +2,6 @@ package Thrift
 
 import "strings"
 import "regexp"
-import "fmt"
 
 var __reHeader = regexp.MustCompile(`^(?P<type>[A-z]+) (?P<identifier>[A-z][A-z0-9]*) \{`)
 
@@ -16,19 +15,29 @@ const (
 )
 
 type IDL struct {
-	enum      []*Enum
-	structure []*Structure
+	enum      map[string]*Enum
+	structure map[string]*Structure
 	_content  []byte
 
 	_state _enumState
 }
 
-func (r *IDL) Enum() []*Enum {
+func (r *IDL) Enum() map[string]*Enum {
 	return r.enum
 }
 
-func (r *IDL) Structure() []*Enum {
-	return r.enum
+func (r *IDL) Structure() map[string]*Structure {
+	return r.structure
+}
+
+func (r *IDL) FindEnum(identifier string) (*Enum, bool) {
+	enum, isExist := r.enum[identifier]
+	return enum, isExist
+}
+
+func (r *IDL) FindStructure(identifier string) (*Structure, bool) {
+	structure, isExist := r.structure[identifier]
+	return structure, isExist
 }
 
 func (r *IDL) Resolve() {
@@ -50,12 +59,10 @@ func (r *IDL) Resolve() {
 		if r._state == end {
 			_end = i
 
-			fmt.Println(i, _lines[_start:_end])
-
 			if enum, isEnum := ReadEnum(_lines[_start:_end]); isEnum {
-				r.enum = append(r.enum, enum)
+				r.enum[enum.Identifier()] = enum.Resolve()
 			} else if structure, isStructure := ReadStructure(_lines[_start:_end]); isStructure {
-				r.structure = append(r.structure, structure)
+				r.structure[structure.Identifier()] = structure.Resolve()
 			}
 		}
 	}
@@ -74,5 +81,17 @@ func (r *IDL) processLine(line string) {
 }
 
 func ReadIDL(content []byte) *IDL {
-	return &IDL{_content: content, _state: none}
+	return &IDL{_content: content, _state: none, structure: make(map[string]*Structure), enum: make(map[string]*Enum)}
+}
+
+func NewIDL() *IDL {
+	return &IDL{_content: nil, _state: none, structure: make(map[string]*Structure), enum: make(map[string]*Enum)}
+}
+
+func (r *IDL) AddStructure(s *Structure) {
+	r.structure[s.Identifier()] = s
+}
+
+func (r *IDL) AddEnum(e *Enum) {
+	r.enum[e.Identifier()] = e
 }

@@ -33,7 +33,25 @@ func TestEnumValid(t *testing.T) {
 
 	enum.Resolve()
 
-	if len(enum.Items) != 3 {
+	if enum.Identifier() != "someEnum" {
 		t.Error("ReadEnum on Valid not return expected enum")
 	}
+
+	if index, isExist := enum.IndexOf("c"); !isExist || index != 3 {
+		t.Error("ReadEnum on Valid not return expected enum")
+	}
+
+}
+
+func TestEnumNew(t *testing.T) {
+
+	enum2 := NewEnum("someEnum2")
+	enum2.AddMember("a")
+	enum2.AddMember("b")
+	enum2.AddMember("c")
+
+	if index, isExist := enum2.IndexOf("c"); !isExist || index != 3 {
+		t.Error("NewEnum not return expected enum")
+	}
+
 }
