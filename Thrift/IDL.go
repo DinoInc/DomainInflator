@@ -1,27 +1,78 @@
 package Thrift
 
-type Enum struct {
-	Items []string
+import "strings"
+import "regexp"
+import "fmt"
+
+var __reHeader = regexp.MustCompile(`^(?P<type>[A-z]+) (?P<identifier>[A-z][A-z0-9]*) \{`)
+
+type _enumState uint32
+
+const (
+	none _enumState = iota
+	begin
+	content
+	end
+)
+
+type IDL struct {
+	enum      []*Enum
+	structure []*Structure
+	_content  []byte
+
+	_state _enumState
 }
 
-type Structure struct {
-	Identifier  string
-	Description string            `json:"description,omitempty"`
-	Properties  map[string]string `json:"properties,omitempty"`
+func (r *IDL) Enum() []*Enum {
+	return r.enum
 }
 
-var reservedSet map[string]bool
-var resolvedList = []string{"BEGIN", "END", "__CLASS__", "__DIR__", "__FILE__", "__FUNCTION__", "__LINE__", "__METHOD__", "__NAMESPACE__", "abstract", "alias", "and", "args", "as", "assert", "begin", "break", "case", "catch", "class", "clone", "continue", "declare", "def", "default", "del", "delete", "do", "dynamic", "elif", "else", "elseif", "elsif", "end", "enddeclare", "endfor", "endforeach", "endif", "endswitch", "endwhile", "ensure", "except", "exec", "finally", "float", "for", "foreach", "from", "function", "global", "goto", "if", "implements", "import", "in", "inline", "instanceof", "interface", "is", "lambda", "module", "native", "new", "next", "nil", "not", "or", "package", "pass", "public", "print", "private", "protected", "raise", "redo", "rescue", "retry", "register", "return", "self", "sizeof", "static", "super", "switch", "synchronized", "then", "this", "throw", "transient", "try", "undef", "unless", "unsigned", "until", "use", "var", "virtual", "volatile", "when", "while", "with", "xor", "yield"}
+func (r *IDL) Structure() []*Enum {
+	return r.enum
+}
 
-func IsReservedWord(word string) bool {
+func (r *IDL) Resolve() {
+	var _content string = string(r._content)
+	var _lines []string = strings.Split(_content, "\n")
 
-	if reservedSet == nil {
-		reservedSet = make(map[string]bool)
-		for _, reservedWord := range resolvedList {
-			reservedSet[reservedWord] = true
+	var _start int
+	var _end int
+	var i int = 0
+	for i < len(_lines) {
+		r.processLine(_lines[i])
+
+		if r._state == begin {
+			_start = i
+		}
+
+		i++
+
+		if r._state == end {
+			_end = i
+
+			fmt.Println(i, _lines[_start:_end])
+
+			if enum, isEnum := ReadEnum(_lines[_start:_end]); isEnum {
+				r.enum = append(r.enum, enum)
+			} else if structure, isStructure := ReadStructure(_lines[_start:_end]); isStructure {
+				r.structure = append(r.structure, structure)
+			}
 		}
 	}
+}
 
-	_, isInReservedWord := reservedSet[word]
-	return isInReservedWord
+func (r *IDL) processLine(line string) {
+	if strings.Contains(line, "{") && (r._state == end || r._state == none) {
+		r._state = begin
+	} else if strings.Contains(line, "}") && (r._state == begin || r._state == content) {
+		r._state = end
+	} else if r._state == begin {
+		r._state = content
+	} else if r._state == end {
+		r._state = none
+	}
+}
+
+func ReadIDL(content []byte) *IDL {
+	return &IDL{_content: content, _state: none}
 }
