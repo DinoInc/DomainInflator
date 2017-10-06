@@ -16,3 +16,14 @@ func RemoveUnderscore(s string) string {
 	replaced := re.ReplaceAllString(s, "")
 	return replaced
 }
+
+func ReSubMatchMap(r *regexp.Regexp, str string) map[string]string {
+	match := r.FindStringSubmatch(str)
+	subMatchMap := make(map[string]string)
+	for i, name := range r.SubexpNames() {
+		if i != 0 && i < len(match) && name != "" {
+			subMatchMap[name] = match[i]
+		}
+	}
+	return subMatchMap
+}
