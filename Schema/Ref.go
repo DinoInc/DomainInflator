@@ -59,6 +59,7 @@ func (r *Ref) Resolve(_schema *Schema) *Structure {
 	}
 
 	r._resolved = _schema.Resolve(r.Name())
+	r._resolved.SetIdentifier(r.Name())
 
 	return r._resolved
 }

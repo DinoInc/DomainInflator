@@ -1,7 +1,5 @@
 package main
 
-import "encoding/json"
-import "io/ioutil"
 import "fmt"
 import "os"
 import "reflect"
@@ -10,18 +8,10 @@ import "regexp"
 import "strings"
 
 import (
-	"github.com/DinoInc/DomainInflator/Engine"
-	"github.com/DinoInc/DomainInflator/Schema"
+	"github.com/DinoInc/DomainInflator/Converter"
 )
 
 var _ = reflect.TypeOf
-
-// [v] allOf
-// [ ] anyOf
-// [v] primitive type
-// [v] array -> ref
-// [v] array -> primitive
-// [ ]
 
 var baseDir string
 var namespace string
@@ -51,32 +41,13 @@ func main() {
 
 	schemaList := strings.Split(*pSchemas, ",")
 
-	engine := Engine.NewEngine(*pBaseDir)
-
+	engine := Converter.NewConverter(*pBaseDir)
+	engine.NewIDL()
 	for _, schema := range schemaList {
-
-		baseDir = *pBaseDir
-		currentFile = schema
-		namespace = *pNamespace
-
-		content, e := ioutil.ReadFile(baseDir + currentFile + ".schema.json")
-		if e != nil {
-			fmt.Printf("File error: %v\n", e)
-			os.Exit(1)
-		}
-
-		jsonContent := json.RawMessage(content)
-		ref, isRef := Schema.ReadRef(&jsonContent)
-
-		if !isRef {
-			panic("not implemented")
-		}
-
-		engine.SchemaIDL.SetCurrentFile(currentFile)
-		engine.SchemaIDL.Resolve(ref)
-
-		engine.ThriftIDL.Resolve(ref.Name(), engine.SchemaIDL)
-
+		engine.ResolveDefinitionOf(schema)
+		engine.Convert()
 	}
+
+	fmt.Println(engine.Thrift())
 
 }

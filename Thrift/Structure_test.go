@@ -33,7 +33,7 @@ func TestStructValid(t *testing.T) {
 
 	structure.Resolve()
 
-	if len(structure.properties) != 3 && structure.Identifier() != "someStruct" {
+	if len(structure.Properties()) != 3 && structure.Identifier() != "someStruct" {
 		t.Error("ReadStructure on Valid not return expected structure")
 	}
 }

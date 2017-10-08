@@ -11,6 +11,13 @@ func (r *Enum) Resolve(schema *Schema) *Enum {
 	return r
 }
 
+type _internal_enum struct {
+	Identifier  string
+	Description string        `json:"description,omitempty"`
+	Type        PrimitiveType `json:"type,omitempty"`
+	Enum        []string      `json:"enum,omitempty"`
+}
+
 func (r *Enum) Members() []string {
 	return r._internal.Enum
 }
@@ -19,10 +26,12 @@ func (r *Enum) Description() string {
 	return r._internal.Description
 }
 
-type _internal_enum struct {
-	Description string        `json:"description,omitempty"`
-	Type        PrimitiveType `json:"type,omitempty"`
-	Enum        []string      `json:"enum,omitempty"`
+func (r *Enum) Identifier() string {
+	return r._internal.Identifier
+}
+
+func (r *Enum) SetIdentifier(identifier string) {
+	r._internal.Identifier = identifier
 }
 
 func ReadEnum(data *json.RawMessage) (*Enum, bool) {

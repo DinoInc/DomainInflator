@@ -2,9 +2,27 @@ package Utils
 
 import "strings"
 import "regexp"
+import "math/rand"
+import "encoding/hex"
+import "os"
+import "path/filepath"
+
+func Min(x, y int) int {
+	if x < y {
+		return x
+	}
+	return y
+}
+
+func Max(x, y int) int {
+	if x > y {
+		return x
+	}
+	return y
+}
 
 func UpperConcat(s ...string) string {
-	result := strings.ToLower(s[0])
+	result := s[0]
 	for i := 1; i < len(s); i++ {
 		result += strings.Title(s[i])
 	}
@@ -26,4 +44,10 @@ func ReSubMatchMap(r *regexp.Regexp, str string) map[string]string {
 		}
 	}
 	return subMatchMap
+}
+
+func TempFileName(prefix, suffix string) string {
+	randBytes := make([]byte, 16)
+	rand.Read(randBytes)
+	return filepath.Join(os.TempDir(), prefix+hex.EncodeToString(randBytes)+suffix)
 }

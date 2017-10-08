@@ -3,10 +3,6 @@ package Schema
 import "fmt"
 import "testing"
 import "strconv"
-import "math/rand"
-import "encoding/hex"
-import "os"
-import "path/filepath"
 import "encoding/json"
 
 var _ = fmt.Println
@@ -204,21 +200,6 @@ func TestSchemaInput(t *testing.T) {
 				t.Error("ReadSchema on Input[" + strconv.Itoa(i) + "] not return expected Structure")
 			}
 
-			data = json.RawMessage(`{"$ref": "#/definitions/Structure1"}`)
-			ref, _ := ReadRef(&data)
-
-			s3 := ref.Resolve(schema)
-
-			if len(s1.Properties) != len(s3.Properties) {
-				t.Error("ReadSchema on Input[" + strconv.Itoa(i) + "] not return expected Structure")
-			}
-
-			s4 := ref.Resolve(schema)
-
-			if len(s1.Properties) != len(s4.Properties) {
-				t.Error("ReadSchema on Input[" + strconv.Itoa(i) + "] not return expected Structure")
-			}
-
 		case 1:
 			s1 := schema.Resolve("Structure3")
 
@@ -251,39 +232,5 @@ func TestSchemaInput(t *testing.T) {
 			}
 		}
 
-	}
-}
-
-func tempFileName(prefix, suffix string) string {
-	randBytes := make([]byte, 16)
-	rand.Read(randBytes)
-	return filepath.Join(os.TempDir(), prefix+hex.EncodeToString(randBytes)+suffix)
-}
-
-func TestSchemaNonSelfRef(t *testing.T) {
-
-	tmpfile := tempFileName("x", ".schema.json")
-
-	file, err := os.Create(tmpfile) // For read access.
-	if err != nil {
-		panic(err)
-	}
-
-	defer os.Remove(tmpfile)
-
-	if _, err := file.Write([]byte(_schema_input[0])); err != nil {
-		panic(err)
-	}
-
-	dir, filename := filepath.Split(tmpfile)
-	data := json.RawMessage(`{ "$ref":"` + filename + `#/definition/Structure1"}`)
-
-	SetBaseDir(dir)
-	ref, _ := ReadRef(&data)
-
-	structure := ref.Resolve(nil)
-
-	if len(structure.Properties) != 2 {
-		t.Error("ReadSchema on NonSelfRef not return expected Structure")
 	}
 }

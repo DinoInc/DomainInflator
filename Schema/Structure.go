@@ -8,8 +8,17 @@ type Structure struct {
 }
 
 type _internal_structure struct {
+	Identifier  string
 	Description string                      `json:"description,omitempty"`
 	Properties  map[string]*json.RawMessage `json:"properties,omitempty"`
+}
+
+func (r *Structure) Identifier() string {
+	return r._internal.Identifier
+}
+
+func (r *Structure) SetIdentifier(identifier string) {
+	r._internal.Identifier = identifier
 }
 
 func (r *Structure) Resolve(schema *Schema) *Structure {
