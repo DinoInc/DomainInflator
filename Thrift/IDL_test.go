@@ -110,7 +110,7 @@ func TestIDLAddStructureProperty(t *testing.T) {
 	structure.AddProperty("someProperty3", "someEnum")
 
 	s, _ := idl.FindStructure("someStruct")
-	if index, isExist := s.IndexOf("someProperty3"); !isExist || index != 3 {
+	if tag, isExist := s.TagOf("someProperty3"); !isExist || tag != 3 {
 		t.Error("Existing IDL on AppendProperty not return expected property")
 	}
 

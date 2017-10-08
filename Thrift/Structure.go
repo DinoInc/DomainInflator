@@ -12,17 +12,17 @@ var _ = fmt.Println
 
 type Structure struct {
 	properties map[int]*Property
-	index      map[string]int
+	tag        map[string]int
 	_internal  _internal_structure
 }
 
 type _internal_structure struct {
 	identifier string
-	_lastIndex int
+	_lastTag   int
 	_content   []string
 }
 
-var __reProperty = regexp.MustCompile(`(?P<comment>//)?(?P<index>[1-9][0-9]*):(\s*(?P<req>[A-z][A-z0-9]*))?(\s*(?P<type>[A-z][A-z0-9]*))(\s*(?P<identifier>[A-z][A-z0-9]*))`)
+var __reProperty = regexp.MustCompile(`(?P<comment>//)?(?P<tag>[1-9][0-9]*):(\s*(?P<req>[A-z][A-z0-9]*))?(\s*(?P<type>[A-z][A-z0-9]*))(\s*(?P<identifier>[A-z][A-z0-9]*))`)
 
 type Property struct {
 	req          string
@@ -50,9 +50,9 @@ func (r *Structure) Properties() map[int]*Property {
 	return r.properties
 }
 
-func (r *Structure) IndexOf(identifier string) (int, bool) {
-	index, isExists := r.index[identifier]
-	return index, isExists
+func (r *Structure) TagOf(identifier string) (int, bool) {
+	tag, isExists := r.tag[identifier]
+	return tag, isExists
 }
 
 func (r *Structure) Resolve() *Structure {
@@ -62,9 +62,9 @@ func (r *Structure) Resolve() *Structure {
 		unparsedProperty = strings.TrimSpace(unparsedProperty)
 		match := Utils.ReSubMatchMap(__reProperty, unparsedProperty)
 
-		var index int
+		var tag int
 		var err error
-		index, err = strconv.Atoi(match["index"])
+		tag, err = strconv.Atoi(match["tag"])
 
 		if err != nil {
 			panic(err)
@@ -74,10 +74,10 @@ func (r *Structure) Resolve() *Structure {
 		var identifier = match["identifier"]
 		var propertyType = match["type"]
 
-		r.properties[index] = &Property{req: req, propertyType: propertyType, identifier: identifier}
-		r.index[identifier] = index
+		r.properties[tag] = &Property{req: req, propertyType: propertyType, identifier: identifier}
+		r.tag[identifier] = tag
 
-		r._internal._lastIndex = Utils.Max(r._internal._lastIndex, index)
+		r._internal._lastTag = Utils.Max(r._internal._lastTag, tag)
 	}
 
 	return r
@@ -91,7 +91,7 @@ func ReadStructure(content []string) (*Structure, bool) {
 		_internal._content = content[1 : len(content)-1]
 		_internal.identifier = header["identifier"]
 
-		return &Structure{_internal: _internal, properties: make(map[int]*Property), index: make(map[string]int)}, true
+		return &Structure{_internal: _internal, properties: make(map[int]*Property), tag: make(map[string]int)}, true
 	}
 
 	return nil, false
@@ -101,7 +101,7 @@ func NewStructure(identifier string) *Structure {
 	var _internal _internal_structure
 	_internal.identifier = identifier
 
-	return &Structure{_internal: _internal, properties: make(map[int]*Property), index: make(map[string]int)}
+	return &Structure{_internal: _internal, properties: make(map[int]*Property), tag: make(map[string]int)}
 }
 
 func (r *Structure) AddProperty(identifier string, propertyType string) {
@@ -110,9 +110,9 @@ func (r *Structure) AddProperty(identifier string, propertyType string) {
 	property.identifier = identifier
 	property.propertyType = propertyType
 
-	r._internal._lastIndex++
-	r.properties[r._internal._lastIndex] = &property
-	r.index[identifier] = r._internal._lastIndex
+	r._internal._lastTag++
+	r.properties[r._internal._lastTag] = &property
+	r.tag[identifier] = r._internal._lastTag
 }
 
 func (r *Structure) String() string {

@@ -78,21 +78,20 @@ func (c *Converter) _ConvertStructure(s *Schema.Structure) string {
 		return name
 	}
 
-	/*
-		thriftStructure := Thrift.NewStructure(s.Identifier())
+	thriftStructure := Thrift.NewStructure(s.Identifier())
 
-		for propertyName, propertyMeta := range s.Properties {
-			context := Utils.UpperConcat(Utils.RemoveUnderscore(s.Identifier()), propertyName)
-			thriftStructure.AddProperty(propertyName, c._TypeOf(context, propertyMeta))
-		}
+	for propertyName, propertyMeta := range s.Properties {
+		context := Utils.UpperConcat(Utils.RemoveUnderscore(s.Identifier()), propertyName)
+		thriftStructure.AddProperty(propertyName, c._TypeOf(context, propertyMeta))
+	}
 
-		c.thriftIDL.AddStructure(thriftStructure)
+	c.thriftIDL.AddStructure(thriftStructure)
 
-		c.resolveOrder = append(c.resolveOrder, thriftStructure.Identifier())
-		c._structureName[s] = thriftStructure.Identifier()
+	c.resolveOrder = append(c.resolveOrder, thriftStructure.Identifier())
+	c._structureName[s] = thriftStructure.Identifier()
 
-		return thriftStructure.Identifier()
-	*/
+	return thriftStructure.Identifier()
+
 }
 
 func (c *Converter) _ConvertEnum(context string, e *Schema.Enum) string {
