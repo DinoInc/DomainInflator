@@ -46,9 +46,9 @@ func TestEnumValid(t *testing.T) {
 func TestEnumNew(t *testing.T) {
 
 	enum2 := NewEnum("someEnum2")
-	enum2.AddMember("a")
-	enum2.AddMember("b")
-	enum2.AddMember("c")
+	enum2.AddItem("a")
+	enum2.AddItem("b")
+	enum2.AddItem("c")
 
 	if index, isExist := enum2.IndexOf("c"); !isExist || index != 3 {
 		t.Error("NewEnum not return expected enum")

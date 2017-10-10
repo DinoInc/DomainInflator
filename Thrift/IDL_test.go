@@ -63,9 +63,9 @@ func TestNewIDLAddEnum(t *testing.T) {
 	idl := NewIDL()
 
 	enum := NewEnum("someEnum")
-	enum.AddMember("a")
-	enum.AddMember("b")
-	enum.AddMember("c")
+	enum.AddItem("a")
+	enum.AddItem("b")
+	enum.AddItem("c")
 	idl.AddEnum(enum)
 
 	if _, isExist := idl.FindEnum("someEnum"); !isExist {
@@ -92,9 +92,9 @@ func TestIDLAddEnum(t *testing.T) {
 	idl.Resolve()
 
 	enum2 := NewEnum("someEnum2")
-	enum2.AddMember("a")
-	enum2.AddMember("b")
-	enum2.AddMember("c")
+	enum2.AddItem("a")
+	enum2.AddItem("b")
+	enum2.AddItem("c")
 	idl.AddEnum(enum2)
 
 	if _, isExist := idl.FindEnum("someEnum2"); !isExist {
@@ -121,7 +121,7 @@ func TestIDLAddEnumMember(t *testing.T) {
 	idl.Resolve()
 
 	enum, _ := idl.FindEnum("someEnum")
-	enum.AddMember("d")
+	enum.AddItem("d")
 
 	e, _ := idl.FindEnum("someEnum")
 	if index, isExist := e.IndexOf("d"); !isExist || index != 4 {
