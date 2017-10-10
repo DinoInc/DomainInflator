@@ -6,6 +6,8 @@ import "math/rand"
 import "encoding/hex"
 import "os"
 import "path/filepath"
+import "unicode"
+import "unicode/utf8"
 
 func Min(x, y int) int {
 	if x < y {
@@ -21,8 +23,32 @@ func Max(x, y int) int {
 	return y
 }
 
-func UpperConcat(s ...string) string {
-	result := s[0]
+func lowerFirst(s string) string {
+	if s == "" {
+		return ""
+	}
+	r, n := utf8.DecodeRuneInString(s)
+	return string(unicode.ToLower(r)) + s[n:]
+}
+
+func upperFirst(s string) string {
+	if s == "" {
+		return ""
+	}
+	r, n := utf8.DecodeRuneInString(s)
+	return string(unicode.ToUpper(r)) + s[n:]
+}
+
+func UpperCamelCase(s ...string) string {
+	result := upperFirst(s[0])
+	for i := 1; i < len(s); i++ {
+		result += strings.Title(s[i])
+	}
+	return result
+}
+
+func LowerCamelCase(s ...string) string {
+	result := lowerFirst(s[0])
 	for i := 1; i < len(s); i++ {
 		result += strings.Title(s[i])
 	}

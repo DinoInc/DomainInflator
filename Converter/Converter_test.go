@@ -9,7 +9,7 @@ import "github.com/DinoInc/DomainInflator/Thrift"
 
 var _ = fmt.Println
 
-var _converter_schema_input = `
+var _converter_schema_input_1 = `
 {
   "definitions": {
     "Structure1": {
@@ -37,6 +37,42 @@ var _converter_schema_input = `
             "primitive2": {
               "description": "Some primitive property of structure2",
               "type": "string"
+            }
+          }
+        }
+      ]
+    }
+  }
+}`
+
+var _converter_schema_input_2 = `
+{
+  "definitions": {
+    "Structure1": {
+      "allOf": [
+        {
+          "description": "Some Structure called Structure1",
+          "properties": {
+            "primitive1": {
+              "description": "Some primitive property of structure1",
+              "type": "string",
+              "enum": ["a", "b", "c", "d"]
+            },
+            "reference2": {
+              "$ref": "#/definitions/Structure2"
+            }
+          }
+        }
+      ]
+    },
+    "Structure2": {
+      "allOf": [
+        {
+          "description": "Some Structure called Structure2",
+          "properties": {
+            "primitive2": {
+              "description": "Some primitive property of structure2",
+              "type": "number"
             }
           }
         }
@@ -77,7 +113,7 @@ func __PutToTMP(filename string, content string) {
 
 func TestNewThrift(t *testing.T) {
 
-	__PutToTMP("Structure1.schema.json", _converter_schema_input)
+	__PutToTMP("Structure1.schema.json", _converter_schema_input_1)
 	defer os.Remove("Structure1.schema.json")
 
 	e := NewConverter("/tmp")
@@ -86,6 +122,8 @@ func TestNewThrift(t *testing.T) {
 	e.Convert()
 
 	thriftString := e.Thrift()
+
+	// check `thriftString` using Thrift package
 	thrift := Thrift.ReadIDL([]byte(thriftString))
 	thrift.Resolve()
 
@@ -102,9 +140,9 @@ func TestNewThrift(t *testing.T) {
 	}
 }
 
-func TestReadThrift(t *testing.T) {
+func TestReadThriftNoChange(t *testing.T) {
 
-	__PutToTMP("Structure1.schema.json", _converter_schema_input)
+	__PutToTMP("Structure1.schema.json", _converter_schema_input_1)
 	defer os.Remove("Structure1.schema.json")
 	__PutToTMP("Structure1.thrift", _converter_thrift_input)
 	defer os.Remove("Structure1.thrift")
@@ -112,7 +150,18 @@ func TestReadThrift(t *testing.T) {
 	e := NewConverter("/tmp")
 	e.ReadIDL("/tmp/Structure1.thrift")
 	e.ResolveDefinitionOf("Structure1")
+	e.Convert()
+}
 
-	// e.ResolveDefinitionOf("Structure1")
-	// fmt.Println(e.Thrift())
+func TestReadThriftWithChange(t *testing.T) {
+
+	__PutToTMP("Structure1.schema.json", _converter_schema_input_2)
+	defer os.Remove("Structure1.schema.json")
+	__PutToTMP("Structure1.thrift", _converter_thrift_input)
+	defer os.Remove("Structure1.thrift")
+
+	e := NewConverter("/tmp")
+	e.ReadIDL("/tmp/Structure1.thrift")
+	e.ResolveDefinitionOf("Structure1")
+	e.Convert()
 }

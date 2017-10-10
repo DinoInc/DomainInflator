@@ -1,13 +1,10 @@
 package Schema
 
-import "fmt"
 import "testing"
 import "encoding/json"
 import "os"
 import "path/filepath"
 import "github.com/DinoInc/DomainInflator/Utils"
-
-var _ = fmt.Println
 
 var _ref_schema_input = `
 {

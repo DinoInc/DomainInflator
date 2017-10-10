@@ -3,22 +3,22 @@ package Schema
 import "encoding/json"
 
 type Structure struct {
+	identifier string
 	Properties map[string]interface{}
 	_internal  _internal_structure
 }
 
 type _internal_structure struct {
-	Identifier  string
 	Description string                      `json:"description,omitempty"`
 	Properties  map[string]*json.RawMessage `json:"properties,omitempty"`
 }
 
 func (r *Structure) Identifier() string {
-	return r._internal.Identifier
+	return r.identifier
 }
 
 func (r *Structure) SetIdentifier(identifier string) {
-	r._internal.Identifier = identifier
+	r.identifier = identifier
 }
 
 func (r *Structure) Resolve(schema *Schema) *Structure {

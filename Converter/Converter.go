@@ -21,6 +21,7 @@ var _primitiveMapping = map[Schema.PrimitiveType]string{
 type Converter struct {
 	_structureName map[*Schema.Structure]string
 	_structure     *Schema.Structure
+	_deviation     []*Deviation
 	thriftIDL      *Thrift.IDL
 	resolveOrder   []string
 }
@@ -42,6 +43,7 @@ func (c *Converter) ReadIDL(filename string) {
 
 	c.thriftIDL = Thrift.ReadIDL(data)
 	c.thriftIDL.Resolve()
+	c.resolveOrder = c.thriftIDL.ResolveOrder()
 }
 
 func (c *Converter) IDL() *Thrift.IDL {
@@ -78,18 +80,38 @@ func (c *Converter) _ConvertStructure(s *Schema.Structure) string {
 		return name
 	}
 
-	thriftStructure := Thrift.NewStructure(s.Identifier())
+	thriftStructure, isDefined := c.thriftIDL.FindStructure(s.Identifier())
 
-	for propertyName, propertyMeta := range s.Properties {
-		context := Utils.UpperConcat(Utils.RemoveUnderscore(s.Identifier()), propertyName)
-		thriftStructure.AddProperty(propertyName, c._TypeOf(context, propertyMeta))
+	if !isDefined {
+		thriftStructure = Thrift.NewStructure(s.Identifier())
 	}
 
-	c.thriftIDL.AddStructure(thriftStructure)
+	for propertyName, propertyMeta := range s.Properties {
 
-	c.resolveOrder = append(c.resolveOrder, thriftStructure.Identifier())
+		context := Utils.UpperCamelCase(Utils.RemoveUnderscore(s.Identifier()), propertyName)
+
+		if Thrift.IsReservedWord(propertyName) {
+			NewPropertyName := Utils.LowerCamelCase(Utils.RemoveUnderscore(s.Identifier()), propertyName)
+			c._deviation = append(c._deviation, &Deviation{Context: PropertyIdentifier, Original: propertyName, Replacement: NewPropertyName})
+			propertyName = NewPropertyName
+		}
+
+		schemaPropertyType := c._TypeOf(context, propertyMeta)
+
+		if property, isPropertyExist := thriftStructure.FindProperty(propertyName); isPropertyExist {
+			property.SetType(schemaPropertyType)
+		} else {
+			thriftStructure.AddProperty(propertyName, schemaPropertyType)
+		}
+
+	}
+
+	if !isDefined {
+		c.thriftIDL.AddStructure(thriftStructure)
+		c.resolveOrder = append(c.resolveOrder, thriftStructure.Identifier())
+	}
+
 	c._structureName[s] = thriftStructure.Identifier()
-
 	return thriftStructure.Identifier()
 
 }
@@ -98,7 +120,7 @@ func (c *Converter) _ConvertEnum(context string, e *Schema.Enum) string {
 	thriftEnum := Thrift.NewEnum(context)
 
 	for _, member := range e.Members() {
-		thriftEnum.AddMember(member)
+		thriftEnum.AddItem(member)
 	}
 
 	c.thriftIDL.AddEnum(thriftEnum)
