@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"sort"
+	"strings"
 
 	"github.com/DinoInc/DomainInflator/Schema"
 	"github.com/DinoInc/DomainInflator/Thrift"
@@ -117,10 +118,19 @@ func (c *Converter) _ConvertStructure(s *Schema.Structure) string {
 }
 
 func (c *Converter) _ConvertEnum(context string, e *Schema.Enum) string {
-	thriftEnum := Thrift.NewEnum(context)
 
-	for _, member := range e.Members() {
-		thriftEnum.AddItem(member)
+	identifier := Utils.LowerCamelCase("enum", context)
+	thriftEnum := Thrift.NewEnum(identifier)
+
+	for _, itemName := range e.Members() {
+
+		if !Thrift.IsValidIdentifier(itemName) {
+			NewItemName := strings.Replace(itemName, "-", "_", -1)
+			c._deviation = append(c._deviation, &Deviation{Context: EnumIdentifier, Original: itemName, Replacement: NewItemName})
+			itemName = NewItemName
+		}
+
+		thriftEnum.AddItem(itemName)
 	}
 
 	c.thriftIDL.AddEnum(thriftEnum)
@@ -151,6 +161,21 @@ func (c *Converter) Thrift() string {
 
 	for _, id := range c.resolveOrder {
 		fmt.Fprintf(&buffer, "%s", structure[id].String())
+	}
+
+	return buffer.String()
+}
+
+func (c *Converter) Deviations() string {
+	var buffer bytes.Buffer
+
+	for _, deviation := range c._deviation {
+		switch deviation.Context {
+		case PropertyIdentifier:
+			fmt.Fprintf(&buffer, "s/json:\"%s,omitempty\"/json:\"%s,omitempty\"/g\n", deviation.Replacement, deviation.Original)
+		case EnumIdentifier:
+			fmt.Fprintf(&buffer, "s/\"%s\"/\"%s\"/g\n", deviation.Replacement, deviation.Original)
+		}
 	}
 
 	return buffer.String()

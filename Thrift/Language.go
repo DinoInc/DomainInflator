@@ -1,5 +1,7 @@
 package Thrift
 
+import "regexp"
+
 var reservedSet map[string]bool
 
 var resolvedList = []string{"BEGIN", "END", "__CLASS__", "__DIR__", "__FILE__", "__FUNCTION__",
@@ -25,4 +27,9 @@ func IsReservedWord(word string) bool {
 
 	_, isInReservedWord := reservedSet[word]
 	return isInReservedWord
+}
+
+func IsValidIdentifier(s string) bool {
+	isMatch, _ := regexp.MatchString(`^[A-z_][A-z0-9._]*$`, s)
+	return isMatch
 }

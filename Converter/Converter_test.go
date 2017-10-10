@@ -36,7 +36,8 @@ var _converter_schema_input_1 = `
           "properties": {
             "primitive2": {
               "description": "Some primitive property of structure2",
-              "type": "string"
+              "type": "array",
+              "items": { "type":"string" }
             }
           }
         }
@@ -81,21 +82,21 @@ var _converter_schema_input_2 = `
   }
 }`
 
-var _converter_thrift_input = `
-enum Structure1Primitive1 {
+var _converter_thrift_input = `enum Structure1Primitive1 {
   a
   b
   c
 }
 
 struct Structure2 {
-  1: optional string primitive2
+  1: optional list<string> primitive2
 }
 
 struct Structure1 {
   1: optional Structure1Primitive1 primitive1
   2: optional Structure2 reference2
 }
+
 `
 
 func __PutToTMP(filename string, content string) {
@@ -151,6 +152,11 @@ func TestReadThriftNoChange(t *testing.T) {
 	e.ReadIDL("/tmp/Structure1.thrift")
 	e.ResolveDefinitionOf("Structure1")
 	e.Convert()
+
+	if e.Thrift() != _converter_thrift_input {
+		t.Error("Converter ReadThriftNoChange not return expected Thrift string")
+	}
+
 }
 
 func TestReadThriftWithChange(t *testing.T) {

@@ -18,7 +18,7 @@ type Structure struct {
 	_content   []string
 }
 
-var __reProperty = regexp.MustCompile(`(?P<comment>//)?(?P<tag>[1-9][0-9]*):(\s*(?P<req>[A-z][A-z0-9]*))?(\s*(?P<type>[A-z][A-z0-9]*))(\s*(?P<identifier>[A-z][A-z0-9]*))`)
+var __reProperty = regexp.MustCompile(`(?P<tag>[1-9][0-9]*):(\s*(?P<req>[A-z][A-z0-9]*))?(\s*(?P<type>[A-z][A-z0-9]*(<[A-z][A-z0-9]*>)?))(\s*(?P<identifier>[A-z][A-z0-9]*))`)
 
 func ReadStructure(content []string) (*Structure, bool) {
 	header := Utils.ReSubMatchMap(__reHeader, content[0])
@@ -127,7 +127,7 @@ func (r *Structure) String() string {
 
 	for _, key := range keys {
 		property := r.properties[key]
-		fmt.Fprintf(&buffer, "\t%d: %s %s %s\n", key, property.Req(), property.Type(), property.Identifier())
+		fmt.Fprintf(&buffer, "  %d: %s %s %s\n", key, property.Req(), property.Type(), property.Identifier())
 	}
 	fmt.Fprintf(&buffer, "}\n\n")
 

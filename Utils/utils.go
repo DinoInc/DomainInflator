@@ -77,3 +77,12 @@ func TempFileName(prefix, suffix string) string {
 	rand.Read(randBytes)
 	return filepath.Join(os.TempDir(), prefix+hex.EncodeToString(randBytes)+suffix)
 }
+
+func FileExists(name string) bool {
+	if _, err := os.Stat(name); err != nil {
+		if os.IsNotExist(err) {
+			return false
+		}
+	}
+	return true
+}

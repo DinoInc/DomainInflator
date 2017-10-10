@@ -78,7 +78,7 @@ func (r *Enum) String() string {
 	sort.Ints(keys)
 
 	for _, key := range keys {
-		fmt.Fprintf(&buffer, "\t%s\n", items[key])
+		fmt.Fprintf(&buffer, "  %s\n", items[key])
 	}
 
 	fmt.Fprintf(&buffer, "}\n\n")
