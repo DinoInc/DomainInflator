@@ -2,3 +2,4 @@ json-schema/
 gen-go/
 Schema/coverage.out
 Thrift/coverage.out
+*.thrift
